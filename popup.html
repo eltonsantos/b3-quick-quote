@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>B3 Quick Quote</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <img class="logo" src="icon48.png" alt="B3 Quick Quote" />
+      <div class="brand-text">
+        <div class="brand-title">B3 Quick Quote</div>
+        <div class="brand-subtitle">Ações & FIIs • Atualização rápida</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="card card-search">
+      <label class="label" for="ticker">Ticker</label>
+      <div class="row">
+        <input id="ticker" class="input" type="text" inputmode="latin" autocomplete="off" spellcheck="false"
+          placeholder="Ex: PETR4 ou HGLG11" />
+        <button id="btnSearch" class="btn" type="button">Buscar</button>
+      </div>
+      <div class="hint">
+        Dica: para ações/FIIs no Brasil, a extensão consulta o símbolo com sufixo <strong>.SA</strong> (ex: PETR4.SA).
+      </div>
+    </section>
+
+    <section class="card card-quote">
+      <div class="card-title">Cotação</div>
+      <div id="quoteState" class="state">Digite um ticker e clique em Buscar.</div>
+
+      <div id="quoteBox" class="quote hidden">
+        <div class="quote-top">
+          <div>
+            <div id="qSymbol" class="q-symbol">—</div>
+            <div id="qName" class="q-name">—</div>
+          </div>
+          <div class="q-pricebox">
+            <div id="qPrice" class="q-price">—</div>
+            <div id="qChange" class="q-change neutral">—</div>
+          </div>
+        </div>
+
+        <div class="quote-grid">
+          <div class="kv"><div class="k">Abertura</div><div id="qOpen" class="v">—</div></div>
+          <div class="kv"><div class="k">Máx (D)</div><div id="qHigh" class="v">—</div></div>
+          <div class="kv"><div class="k">Mín (D)</div><div id="qLow" class="v">—</div></div>
+          <div class="kv"><div class="k">Volume</div><div id="qVol" class="v">—</div></div>
+        </div>
+
+        <div class="quote-footer">
+          <div id="qTime" class="q-time">—</div>
+          <button id="btnRefresh" class="btn btn-ghost" type="button">Atualizar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card card-tops">
+      <div class="tops-head">
+        <div class="card-title">Maiores altas e baixas do dia</div>
+        <button id="btnLoadTops" class="btn btn-ghost" type="button">Carregar</button>
+      </div>
+
+      <div id="topsState" class="state">Clique em “Carregar” para ver Top 3 de Ações e FIIs.</div>
+
+      <div id="topsBox" class="tops hidden">
+        <div class="tops-grid">
+          <div class="tops-col">
+            <div class="tops-title">AÇÕES • Altas</div>
+            <div id="stocksGainers" class="list"></div>
+            <div class="tops-title tops-title-spaced">AÇÕES • Baixas</div>
+            <div id="stocksLosers" class="list"></div>
+          </div>
+
+          <div class="tops-col">
+            <div class="tops-title">FIIs • Altas</div>
+            <div id="fiisGainers" class="list"></div>
+            <div class="tops-title tops-title-spaced">FIIs • Baixas</div>
+            <div id="fiisLosers" class="list"></div>
+          </div>
+        </div>
+
+        <div class="mini-note">
+          Observação: Top 3 é calculado a partir de uma lista de ativos líquidos (lista interna). Não representa todo o mercado.
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <a class="link" href="privacy.html" target="_blank" rel="noreferrer">Privacidade</a>
+      <span class="dot">•</span>
+      <a class="link" href="https://finance.yahoo.com" target="_blank" rel="noreferrer">Fonte: Yahoo Finance</a>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
