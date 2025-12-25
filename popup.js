@@ -81,9 +81,9 @@ function formatDateTime(timestamp) {
 function showMarketStatus(el, isClosed) {
   if (!el) return;
   if (isClosed) {
-    el.innerHTML = '<span class="market-closed-badge">Market Closed</span>';
+    el.innerHTML = '<span class="market-closed-badge">Mercado Fechado</span>';
   } else {
-    el.innerHTML = '<span class="market-open-badge">Live</span>';
+    el.innerHTML = '<span class="market-open-badge">Ao Vivo</span>';
   }
 }
 
@@ -118,7 +118,7 @@ function renderQuote(q) {
 
   // Show timestamp
   const timeStr = q.marketTime ? formatDateTime(q.marketTime) : "—";
-  els.qTime.textContent = `Updated: ${timeStr}`;
+  els.qTime.textContent = `Atualizado: ${timeStr}`;
 
   // Show market status badge
   showMarketStatus(els.qMarketStatus, q.isMarketClosed);
@@ -126,6 +126,10 @@ function renderQuote(q) {
 
 function renderList(container, items) {
   container.innerHTML = "";
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="state" style="padding:4px 0;font-size:11px;">—</div>';
+    return;
+  }
   items.forEach((it) => {
     const row = document.createElement("div");
     row.className = "item";
@@ -149,7 +153,7 @@ async function doSearch(refreshOnly = false) {
   if (!symbol) {
     els.quoteBox.classList.add("hidden");
     els.quoteState.classList.remove("hidden");
-    setState(els.quoteState, "Enter a valid ticker (e.g., PETR4, HGLG11).");
+    setState(els.quoteState, "Digite um ticker válido (ex: PETR4, VALE3).");
     return;
   }
 
@@ -158,11 +162,11 @@ async function doSearch(refreshOnly = false) {
 
   els.quoteBox.classList.add("hidden");
   els.quoteState.classList.remove("hidden");
-  setState(els.quoteState, refreshOnly ? "Refreshing..." : "Fetching quote...");
+  setState(els.quoteState, refreshOnly ? "Atualizando..." : "Buscando cotação...");
 
   try {
     const resp = await sendMessage({ type: "GET_QUOTE", symbol });
-    if (!resp?.ok) throw new Error(resp?.error || "Failed to get quote.");
+    if (!resp?.ok) throw new Error(resp?.error || "Falha ao obter cotação.");
     renderQuote(resp.data);
 
     // persist last ticker
@@ -170,7 +174,16 @@ async function doSearch(refreshOnly = false) {
   } catch (e) {
     els.quoteBox.classList.add("hidden");
     els.quoteState.classList.remove("hidden");
-    setState(els.quoteState, `Error: ${e.message || e}`);
+    
+    // Translate common error messages
+    let errorMsg = e.message || String(e);
+    if (errorMsg.includes("requires API key")) {
+      errorMsg = `O ticker "${symbol}" requer chave de API. Tickers gratuitos: PETR4, VALE3, ITUB4, MGLU3`;
+    } else if (errorMsg.includes("Ticker not found")) {
+      errorMsg = "Ticker não encontrado.";
+    }
+    
+    setState(els.quoteState, `Erro: ${errorMsg}`);
   } finally {
     els.btnSearch.disabled = false;
     els.btnRefresh.disabled = false;
@@ -181,13 +194,13 @@ async function loadTops() {
   els.btnLoadTops.disabled = true;
   els.topsBox.classList.add("hidden");
   els.topsState.classList.remove("hidden");
-  setState(els.topsState, "Loading Top 3...");
+  setState(els.topsState, "Carregando variações...");
 
   try {
     const resp = await sendMessage({ type: "GET_TOPS" });
-    if (!resp?.ok) throw new Error(resp?.error || "Failed to get tops.");
+    if (!resp?.ok) throw new Error(resp?.error || "Falha ao carregar dados.");
 
-    const { stocks, fiis, updatedAt, isMarketClosed } = resp.data;
+    const { stocks, fiis, updatedAt, isMarketClosed, isDemoMode } = resp.data;
 
     renderList(els.stocksGainers, stocks.gainers);
     renderList(els.stocksLosers, stocks.losers);
@@ -204,12 +217,16 @@ async function loadTops() {
     const note = document.querySelector(".mini-note");
     if (note && updatedAt) {
       const dateStr = new Date(updatedAt).toLocaleString("pt-BR");
-      note.textContent = `Note: Top 3 is calculated from a curated list of liquid assets. Updated: ${dateStr}.`;
+      if (isDemoMode) {
+        note.textContent = `Obs: Modo demonstração com tickers gratuitos. Atualizado: ${dateStr}`;
+      } else {
+        note.textContent = `Obs: Calculado a partir de ativos líquidos. Atualizado: ${dateStr}`;
+      }
     }
   } catch (e) {
     els.topsBox.classList.add("hidden");
     els.topsState.classList.remove("hidden");
-    setState(els.topsState, `Error: ${e.message || e}`);
+    setState(els.topsState, `Erro: ${e.message || e}`);
   } finally {
     els.btnLoadTops.disabled = false;
   }
