@@ -1,96 +1,235 @@
 /* B3 Quick Quote - Service Worker (MV3)
-   Fetches intraday quotes from Yahoo Finance.
+   Fetches quotes from brapi.dev (free API with 4 demo tickers)
+   https://brapi.dev/
+   
+   Free tickers available without API key: PETR4, VALE3, ITUB4, MGLU3
+   For full access, users need to get an API key from brapi.dev
 */
-const QUOTE_ENDPOINT = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=";
 
-// Lists tuned for liquidity/popularity; adjust as needed.
-const STOCKS = [
-  "PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA","BBAS3.SA","B3SA3.SA","WEGE3.SA","ABEV3.SA","ELET3.SA","ELET6.SA",
-  "PRIO3.SA","SUZB3.SA","RADL3.SA","LREN3.SA","GGBR4.SA","CSNA3.SA","JBSS3.SA","UGPA3.SA","VIVT3.SA","TIMS3.SA",
-  "RAIL3.SA","RENT3.SA","HAPV3.SA","MGLU3.SA","ASAI3.SA","BRFS3.SA","CMIG4.SA","CPLE6.SA","ENEV3.SA","EQTL3.SA",
-  "FLRY3.SA","GOLL4.SA","KLBN11.SA","MRVE3.SA","NTCO3.SA","PCAR3.SA","RDOR3.SA","SANB11.SA","TAEE11.SA","USIM5.SA"
-];
+const BRAPI_BASE = "https://brapi.dev/api";
 
-const FIIS = [
-  "HGLG11.SA","MXRF11.SA","VISC11.SA","XPML11.SA","XPLG11.SA","KNRI11.SA","BCFF11.SA","IRDM11.SA","HGRE11.SA","HGRU11.SA",
-  "KNSC11.SA","RBRP11.SA","RECT11.SA","GGRC11.SA","CPTS11.SA","VILG11.SA","BTLG11.SA","BRCO11.SA","ALZR11.SA","HGCR11.SA",
-  "KNCR11.SA","KNUQ11.SA","XPCI11.SA","XPSF11.SA","JSRE11.SA","PVBI11.SA","HSML11.SA","RZTR11.SA","TRXF11.SA","VINO11.SA"
-];
+// Free tickers available without API key
+const FREE_TICKERS = ["PETR4", "VALE3", "ITUB4", "MGLU3"];
 
-function chunk(arr, size){
-  const out = [];
-  for (let i=0; i<arr.length; i+=size) out.push(arr.slice(i, i+size));
-  return out;
+// Popular stocks and REITs for Top 3 calculation (limited to free tickers for demo)
+const DEMO_STOCKS = ["PETR4", "VALE3", "ITUB4", "MGLU3"];
+
+// Cache for quotes (to show last known data when market is closed)
+let quotesCache = {};
+let lastCacheUpdate = null;
+
+// Load cache from storage on startup
+chrome.storage.local.get(["quotesCache", "lastCacheUpdate"], (data) => {
+  if (data.quotesCache) quotesCache = data.quotesCache;
+  if (data.lastCacheUpdate) lastCacheUpdate = data.lastCacheUpdate;
+});
+
+function saveCache() {
+  chrome.storage.local.set({ quotesCache, lastCacheUpdate }).catch(() => {});
 }
 
-async function fetchQuotes(symbols){
-  const url = QUOTE_ENDPOINT + encodeURIComponent(symbols.join(","));
-  const res = await fetch(url, { method:"GET", cache:"no-store" });
-  if (!res.ok) throw new Error(`Yahoo request failed (${res.status})`);
+/**
+ * Check if ticker is in free tier
+ */
+function isFreeTicker(ticker) {
+  return FREE_TICKERS.includes(ticker.toUpperCase());
+}
+
+/**
+ * Fetch quotes from brapi.dev
+ * @param {string[]} tickers - Array of ticker symbols
+ */
+async function fetchQuotes(tickers) {
+  const tickerList = tickers.join(",");
+  const url = `${BRAPI_BASE}/quote/${tickerList}`;
+  
+  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  
+  if (res.status === 401) {
+    throw new Error("This ticker requires an API key. Free tickers: PETR4, VALE3, ITUB4, MGLU3");
+  }
+  
+  if (!res.ok) {
+    throw new Error(`API error (${res.status})`);
+  }
+  
   const data = await res.json();
-  const results = data?.quoteResponse?.result || [];
-  return results;
+  
+  if (data.error) {
+    throw new Error(data.message || "API error");
+  }
+  
+  return data.results || [];
 }
 
-function mapQuote(q){
+/**
+ * Map brapi.dev response to our internal format
+ */
+function mapQuote(q) {
   const symbol = q?.symbol || "";
-  const displaySymbol = symbol.replace(".SA","");
+  const marketTime = q?.regularMarketTime ? new Date(q.regularMarketTime).getTime() / 1000 : null;
+  
   return {
-    symbol,
-    displaySymbol,
-    shortName: q?.shortName,
-    longName: q?.longName,
-    regularMarketPrice: q?.regularMarketPrice,
-    regularMarketChange: q?.regularMarketChange,
-    regularMarketChangePercent: q?.regularMarketChangePercent,
-    regularMarketOpen: q?.regularMarketOpen,
-    regularMarketDayHigh: q?.regularMarketDayHigh,
-    regularMarketDayLow: q?.regularMarketDayLow,
-    regularMarketVolume: q?.regularMarketVolume,
-    marketTime: q?.regularMarketTime
+    symbol: symbol,
+    displaySymbol: symbol,
+    shortName: q?.shortName || symbol,
+    longName: q?.longName || null,
+    regularMarketPrice: q?.regularMarketPrice ?? null,
+    regularMarketChange: q?.regularMarketChange ?? null,
+    regularMarketChangePercent: q?.regularMarketChangePercent ?? null,
+    regularMarketOpen: q?.regularMarketOpen ?? null,
+    regularMarketDayHigh: q?.regularMarketDayHigh ?? null,
+    regularMarketDayLow: q?.regularMarketDayLow ?? null,
+    regularMarketVolume: q?.regularMarketVolume ?? null,
+    marketTime: marketTime,
+    previousClose: q?.regularMarketPreviousClose ?? null,
+    high52: q?.fiftyTwoWeekHigh ?? null,
+    low52: q?.fiftyTwoWeekLow ?? null,
+    marketCap: q?.marketCap ?? null,
+    logoUrl: q?.logourl ?? null,
+    // Flag to indicate if this is cached/old data
+    isMarketClosed: false
   };
 }
 
-async function getQuote(symbol){
-  const quotes = await fetchQuotes([symbol]);
-  if (!quotes.length) throw new Error("Ticker não encontrado.");
-  return mapQuote(quotes[0]);
+/**
+ * Check if the quote data is from today or stale (market closed/holiday)
+ */
+function isQuoteStale(quote) {
+  if (!quote?.marketTime) return true;
+  
+  const quoteDate = new Date(quote.marketTime * 1000);
+  const today = new Date();
+  
+  // Check if quote is from a different day
+  return quoteDate.toDateString() !== today.toDateString();
 }
 
-function top3(quotes, direction){
-  // direction: "gainers" (desc), "losers" (asc)
+/**
+ * Get quote for a single ticker
+ */
+async function getQuote(ticker) {
+  const normalizedTicker = ticker.toUpperCase().replace(".SA", "");
+  
+  // Check if this is a free ticker
+  if (!isFreeTicker(normalizedTicker)) {
+    // Check cache first
+    if (quotesCache[normalizedTicker]) {
+      return { 
+        ...quotesCache[normalizedTicker], 
+        isMarketClosed: true,
+        _cached: true,
+        _limitedAccess: true
+      };
+    }
+    throw new Error(`Ticker "${normalizedTicker}" requires API key. Free tickers: PETR4, VALE3, ITUB4, MGLU3`);
+  }
+  
+  try {
+    const results = await fetchQuotes([normalizedTicker]);
+    
+    if (!results.length) {
+      throw new Error("Ticker not found");
+    }
+    
+    const quote = mapQuote(results[0]);
+    
+    // Check if market is closed/holiday (stale data)
+    quote.isMarketClosed = isQuoteStale(quote);
+    
+    // Update cache
+    quotesCache[normalizedTicker] = quote;
+    lastCacheUpdate = Date.now();
+    saveCache();
+    
+    return quote;
+  } catch (error) {
+    // If API fails, try to return cached data
+    if (quotesCache[normalizedTicker]) {
+      const cachedQuote = { ...quotesCache[normalizedTicker], isMarketClosed: true };
+      return cachedQuote;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Calculate top 3 gainers and losers
+ */
+function top3(quotes, direction) {
   const clean = quotes
-    .map(mapQuote)
     .filter(q => typeof q.regularMarketChangePercent === "number" && isFinite(q.regularMarketChangePercent));
-  clean.sort((a,b) => (a.regularMarketChangePercent - b.regularMarketChangePercent));
+  
+  clean.sort((a, b) => a.regularMarketChangePercent - b.regularMarketChangePercent);
+  
   const sorted = direction === "gainers" ? clean.slice().reverse() : clean.slice();
-  return sorted.slice(0,3).map(q => ({ displaySymbol: q.displaySymbol, pct: q.regularMarketChangePercent }));
+  
+  return sorted.slice(0, 3).map(q => ({
+    displaySymbol: q.displaySymbol,
+    pct: q.regularMarketChangePercent
+  }));
 }
 
-async function getTops(){
-  // Batch requests to reduce number of calls (Yahoo supports many symbols per request; keep conservative).
-  const stocksChunks = chunk(STOCKS, 40);
-  const fiisChunks = chunk(FIIS, 40);
-
-  const [stocksQuotes, fiisQuotes] = await Promise.all([
-    (async() => (await Promise.all(stocksChunks.map(fetchQuotes))).flat())(),
-    (async() => (await Promise.all(fiisChunks.map(fetchQuotes))).flat())()
-  ]);
-
-  const stocks = {
-    gainers: top3(stocksQuotes, "gainers"),
-    losers: top3(stocksQuotes, "losers")
-  };
-  const fiis = {
-    gainers: top3(fiisQuotes, "gainers"),
-    losers: top3(fiisQuotes, "losers")
-  };
-
-  return {
-    stocks,
-    fiis,
-    updatedAt: Date.now()
-  };
+/**
+ * Get Top gainers and losers for demo stocks
+ * Limited to free tickers for demo purposes
+ */
+async function getTops() {
+  try {
+    // Fetch all free tickers at once
+    const results = await fetchQuotes(DEMO_STOCKS);
+    
+    const quotes = results.map(mapQuote);
+    
+    // Check if market is closed (all quotes stale)
+    const isMarketClosed = quotes.length > 0 && quotes.every(q => isQuoteStale(q));
+    
+    // Update cache
+    quotes.forEach(q => { quotesCache[q.displaySymbol] = q; });
+    lastCacheUpdate = Date.now();
+    saveCache();
+    
+    // Since we only have 4 stocks, we'll show them all as both stocks and "demo"
+    const gainers = top3(quotes, "gainers");
+    const losers = top3(quotes, "losers");
+    
+    return {
+      stocks: {
+        gainers: gainers.slice(0, 2),
+        losers: losers.slice(0, 2)
+      },
+      fiis: {
+        gainers: [], // No free REITs available
+        losers: []
+      },
+      updatedAt: Date.now(),
+      isMarketClosed,
+      isDemoMode: true,
+      message: "Demo mode: Only 4 free tickers available (PETR4, VALE3, ITUB4, MGLU3). Get an API key at brapi.dev for full access."
+    };
+  } catch (error) {
+    // If API fails, try to compute from cache
+    if (Object.keys(quotesCache).length > 0) {
+      const cachedQuotes = DEMO_STOCKS.map(t => quotesCache[t]).filter(Boolean);
+      
+      if (cachedQuotes.length > 0) {
+        return {
+          stocks: {
+            gainers: top3(cachedQuotes, "gainers").slice(0, 2),
+            losers: top3(cachedQuotes, "losers").slice(0, 2)
+          },
+          fiis: {
+            gainers: [],
+            losers: []
+          },
+          updatedAt: lastCacheUpdate,
+          isMarketClosed: true,
+          isDemoMode: true
+        };
+      }
+    }
+    throw error;
+  }
 }
 
 // Message handler
@@ -99,17 +238,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     try {
       if (msg?.type === "GET_QUOTE") {
         const data = await getQuote(msg.symbol);
-        sendResponse({ ok:true, data });
+        sendResponse({ ok: true, data });
         return;
       }
       if (msg?.type === "GET_TOPS") {
         const data = await getTops();
-        sendResponse({ ok:true, data });
+        sendResponse({ ok: true, data });
         return;
       }
-      sendResponse({ ok:false, error:"Mensagem desconhecida." });
+      sendResponse({ ok: false, error: "Unknown message type." });
     } catch (e) {
-      sendResponse({ ok:false, error: e?.message || String(e) });
+      sendResponse({ ok: false, error: e?.message || String(e) });
     }
   })();
   return true; // keep message channel open

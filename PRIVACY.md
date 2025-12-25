@@ -39,8 +39,7 @@ The only external communication made by the extension is:
 
 | Destination | Purpose |
 |-------------|---------|
-| `query1.finance.yahoo.com` | Fetch stock and REIT quotes |
-| `query2.finance.yahoo.com` | Alternative Yahoo Finance endpoint |
+| `brapi.dev` | Fetch stock and REIT quotes from the Brazilian market |
 
 **No personal data is sent in these requests.** Only asset codes (tickers) are queried.
 

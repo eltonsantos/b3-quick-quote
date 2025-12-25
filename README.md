@@ -48,13 +48,15 @@ Perfect for investors who want to track the Brazilian market efficiently, direct
 
 ---
 
-## 📊 Monitored Assets
+## 📊 Available Tickers
 
-The extension monitors a curated list of liquid assets for Top 3 calculation:
+### Free Tier (No API Key Required)
+The following tickers are available for free without any registration:
 
-**Stocks:** PETR4, VALE3, ITUB4, BBDC4, BBAS3, B3SA3, WEGE3, ABEV3, ELET3, PRIO3, SUZB3, LREN3, GGBR4, JBSS3, RENT3, MGLU3, and more...
+**PETR4** (Petrobras) • **VALE3** (Vale) • **ITUB4** (Itaú) • **MGLU3** (Magazine Luiza)
 
-**REITs (FIIs):** HGLG11, MXRF11, VISC11, XPML11, XPLG11, KNRI11, BCFF11, IRDM11, HGRE11, KNCR11, XPCI11, PVBI11, and more...
+### Full Access
+For access to all 4,000+ tickers (stocks, REITs, ETFs, BDRs), get a free API key at [brapi.dev](https://brapi.dev/dashboard).
 
 ---
 
@@ -111,7 +113,7 @@ This extension was built with:
 - **JavaScript** (Vanilla JS, no frameworks)
 - **Chrome Extensions API** (Manifest V3)
 - **CSS3** (Custom styling with CSS variables)
-- **Yahoo Finance API** (Quote data source)
+- **brapi.dev API** (Brazilian market data source)
 - **Chrome Storage API** (Local preference storage)
 
 ---
@@ -122,9 +124,9 @@ Your privacy matters. This extension:
 
 - ✅ Does **NOT** collect personal data
 - ✅ Does **NOT** track your browsing history
-- ✅ Does **NOT** send data to external servers (except Yahoo Finance for quotes)
+- ✅ Does **NOT** send data to external servers (except brapi.dev for quotes)
 - ✅ Works **100% locally** in your browser
-- ✅ Only accesses Yahoo Finance API to fetch quotes
+- ✅ Only accesses brapi.dev API to fetch quotes
 
 All settings are stored locally using Chrome Storage.
 

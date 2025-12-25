@@ -16,53 +16,78 @@ const els = {
   qLow: $("qLow"),
   qVol: $("qVol"),
   qTime: $("qTime"),
+  qMarketStatus: $("qMarketStatus"),
 
   btnLoadTops: $("btnLoadTops"),
   topsState: $("topsState"),
   topsBox: $("topsBox"),
+  topsMarketStatus: $("topsMarketStatus"),
   stocksGainers: $("stocksGainers"),
   stocksLosers: $("stocksLosers"),
   fiisGainers: $("fiisGainers"),
   fiisLosers: $("fiisLosers"),
 };
 
-function fmtBRL(v){
+function fmtBRL(v) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   try {
-    return new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL" }).format(v);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
   } catch {
     return `R$ ${Number(v).toFixed(2)}`;
   }
 }
-function fmtNum(v){
+
+function fmtNum(v) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   return new Intl.NumberFormat("pt-BR").format(v);
 }
-function fmtPct(v){
+
+function fmtPct(v) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   const sign = v > 0 ? "+" : "";
   return `${sign}${v.toFixed(2)}%`;
 }
-function setState(el, text){
+
+function setState(el, text) {
   el.textContent = text;
 }
-function setChangeClass(el, pct){
-  el.classList.remove("good","bad","neutral");
+
+function setChangeClass(el, pct) {
+  el.classList.remove("good", "bad", "neutral");
   if (pct > 0) el.classList.add("good");
   else if (pct < 0) el.classList.add("bad");
   else el.classList.add("neutral");
 }
-function normalizeTicker(input){
+
+function normalizeTicker(input) {
   const t = (input || "").trim().toUpperCase();
   if (!t) return "";
-  // allow already with .SA
-  if (t.endsWith(".SA")) return t;
-  // common: PETR4, HGLG11
-  // If user types with spaces or hyphen, strip
-  return t.replace(/[^A-Z0-9.]/g, "") + ".SA";
+  // Remove .SA suffix if present
+  return t.replace(".SA", "").replace(/[^A-Z0-9]/g, "");
 }
 
-async function sendMessage(msg){
+function formatDateTime(timestamp) {
+  if (!timestamp) return "—";
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function showMarketStatus(el, isClosed) {
+  if (!el) return;
+  if (isClosed) {
+    el.innerHTML = '<span class="market-closed-badge">Market Closed</span>';
+  } else {
+    el.innerHTML = '<span class="market-open-badge">Live</span>';
+  }
+}
+
+async function sendMessage(msg) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(msg, (resp) => {
       const err = chrome.runtime.lastError;
@@ -72,13 +97,14 @@ async function sendMessage(msg){
   });
 }
 
-function renderQuote(q){
+function renderQuote(q) {
   els.quoteState.classList.add("hidden");
   els.quoteBox.classList.remove("hidden");
 
   els.qSymbol.textContent = q.displaySymbol || q.symbol || "—";
-  els.qName.textContent = q.shortName || q.longName || "—";
+  els.qName.textContent = q.shortName || q.longName || q.displaySymbol || "—";
   els.qPrice.textContent = fmtBRL(q.regularMarketPrice);
+  
   const pct = q.regularMarketChangePercent ?? null;
   const chg = q.regularMarketChange ?? null;
   const sign = (chg ?? 0) > 0 ? "+" : "";
@@ -90,12 +116,15 @@ function renderQuote(q){
   els.qLow.textContent = fmtBRL(q.regularMarketDayLow);
   els.qVol.textContent = fmtNum(q.regularMarketVolume);
 
-  els.qTime.textContent = q.marketTime
-    ? `Atualizado: ${new Date(q.marketTime * 1000).toLocaleString("pt-BR")}`
-    : "Atualizado: —";
+  // Show timestamp
+  const timeStr = q.marketTime ? formatDateTime(q.marketTime) : "—";
+  els.qTime.textContent = `Updated: ${timeStr}`;
+
+  // Show market status badge
+  showMarketStatus(els.qMarketStatus, q.isMarketClosed);
 }
 
-function renderList(container, items){
+function renderList(container, items) {
   container.innerHTML = "";
   items.forEach((it) => {
     const row = document.createElement("div");
@@ -114,13 +143,13 @@ function renderList(container, items){
   });
 }
 
-async function doSearch(refreshOnly=false){
+async function doSearch(refreshOnly = false) {
   const raw = els.ticker.value;
   const symbol = normalizeTicker(raw);
-  if (!symbol){
+  if (!symbol) {
     els.quoteBox.classList.add("hidden");
     els.quoteState.classList.remove("hidden");
-    setState(els.quoteState, "Digite um ticker válido (ex: PETR4, HGLG11).");
+    setState(els.quoteState, "Enter a valid ticker (e.g., PETR4, HGLG11).");
     return;
   }
 
@@ -129,36 +158,36 @@ async function doSearch(refreshOnly=false){
 
   els.quoteBox.classList.add("hidden");
   els.quoteState.classList.remove("hidden");
-  setState(els.quoteState, refreshOnly ? "Atualizando..." : "Buscando cotação...");
+  setState(els.quoteState, refreshOnly ? "Refreshing..." : "Fetching quote...");
 
-  try{
-    const resp = await sendMessage({ type:"GET_QUOTE", symbol });
-    if (!resp?.ok) throw new Error(resp?.error || "Falha ao obter cotação.");
+  try {
+    const resp = await sendMessage({ type: "GET_QUOTE", symbol });
+    if (!resp?.ok) throw new Error(resp?.error || "Failed to get quote.");
     renderQuote(resp.data);
 
     // persist last ticker
-    chrome.storage.local.set({ lastTicker: raw.trim().toUpperCase() }).catch(()=>{});
-  } catch(e){
+    chrome.storage.local.set({ lastTicker: symbol }).catch(() => {});
+  } catch (e) {
     els.quoteBox.classList.add("hidden");
     els.quoteState.classList.remove("hidden");
-    setState(els.quoteState, `Erro: ${e.message || e}`);
-  } finally{
+    setState(els.quoteState, `Error: ${e.message || e}`);
+  } finally {
     els.btnSearch.disabled = false;
     els.btnRefresh.disabled = false;
   }
 }
 
-async function loadTops(){
+async function loadTops() {
   els.btnLoadTops.disabled = true;
   els.topsBox.classList.add("hidden");
   els.topsState.classList.remove("hidden");
-  setState(els.topsState, "Carregando Top 3...");
+  setState(els.topsState, "Loading Top 3...");
 
-  try{
-    const resp = await sendMessage({ type:"GET_TOPS" });
-    if (!resp?.ok) throw new Error(resp?.error || "Falha ao obter Tops.");
+  try {
+    const resp = await sendMessage({ type: "GET_TOPS" });
+    if (!resp?.ok) throw new Error(resp?.error || "Failed to get tops.");
 
-    const { stocks, fiis, updatedAt } = resp.data;
+    const { stocks, fiis, updatedAt, isMarketClosed } = resp.data;
 
     renderList(els.stocksGainers, stocks.gainers);
     renderList(els.stocksLosers, stocks.losers);
@@ -168,16 +197,20 @@ async function loadTops(){
     els.topsState.classList.add("hidden");
     els.topsBox.classList.remove("hidden");
 
-    // add timestamp to state if needed
+    // Show market status
+    showMarketStatus(els.topsMarketStatus, isMarketClosed);
+
+    // Update note with timestamp
     const note = document.querySelector(".mini-note");
     if (note && updatedAt) {
-      note.textContent = `Observação: Top 3 é calculado a partir de uma lista interna de ativos líquidos. Atualizado: ${new Date(updatedAt).toLocaleString("pt-BR")}.`;
+      const dateStr = new Date(updatedAt).toLocaleString("pt-BR");
+      note.textContent = `Note: Top 3 is calculated from a curated list of liquid assets. Updated: ${dateStr}.`;
     }
-  } catch(e){
+  } catch (e) {
     els.topsBox.classList.add("hidden");
     els.topsState.classList.remove("hidden");
-    setState(els.topsState, `Erro: ${e.message || e}`);
-  } finally{
+    setState(els.topsState, `Error: ${e.message || e}`);
+  } finally {
     els.btnLoadTops.disabled = false;
   }
 }
@@ -195,8 +228,8 @@ chrome.storage.local.get(["lastTicker"], (res) => {
   if (res?.lastTicker) els.ticker.value = res.lastTicker;
 });
 
-// Auto refresh quote while popup is open (every 15s) if quote is visible
+// Auto refresh quote while popup is open (every 30s) if quote is visible
 setInterval(() => {
   const isVisible = !els.quoteBox.classList.contains("hidden");
   if (isVisible) doSearch(true);
-}, 15000);
+}, 30000);
