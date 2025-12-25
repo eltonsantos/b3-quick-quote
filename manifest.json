@@ -1,10 +1,12 @@
 {
-  "manifest_version": 3,
   "name": "B3 Quick Quote",
   "version": "1.0.0",
-  "description": "Cotação rápida de ações e FIIs da B3 + Top 3 maiores altas e baixas do dia.",
+  "manifest_version": 3,
+  "description": "Quick stock and REIT quotes from B3 (Brazilian Stock Exchange). Price, change, volume, and Top 3 gainers/losers. Track the Brazilian market from your browser!",
+  "author": "Elton Santos",
+  "homepage_url": "https://eltonmelosantos.com.br",
   "action": {
-    "default_title": "B3 Quick Quote",
+    "default_title": "B3 Quick Quote - Stock & REIT Quotes",
     "default_popup": "popup.html"
   },
   "icons": {
