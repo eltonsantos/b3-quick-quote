@@ -1,8 +1,8 @@
 {
   "name": "B3 Quick Quote",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "manifest_version": 3,
-  "description": "Quick stock and REIT quotes from B3 (Brazilian Stock Exchange). Price, change, volume, and Top 3 gainers/losers. Track the Brazilian market from your browser!",
+  "description": "Quick B3 stock & REIT quotes. Price, change, volume, and top gainers/losers from the Brazilian market.",
   "author": "Elton Santos",
   "homepage_url": "https://eltonmelosantos.com.br",
   "action": {

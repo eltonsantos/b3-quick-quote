@@ -22,11 +22,11 @@
       <label class="label" for="ticker">Ticker</label>
       <div class="row">
         <input id="ticker" class="input" type="text" inputmode="latin" autocomplete="off" spellcheck="false"
-          placeholder="Ex: PETR4 ou VALE3" />
+          placeholder="Ex: PETR4, VALE3, HGLG11" />
         <button id="btnSearch" class="btn" type="button">Buscar</button>
       </div>
       <div class="hint">
-        Tickers gratuitos: PETR4, VALE3, ITUB4, MGLU3. Para acesso completo, obtenha uma chave em <a href="https://brapi.dev" target="_blank" rel="noreferrer" style="color:var(--accent)">brapi.dev</a>
+        Digite o código de qualquer ação ou FII da B3. Dados com 15 min de atraso.
       </div>
     </section>
 
@@ -66,7 +66,7 @@
         <button id="btnLoadTops" class="btn btn-ghost" type="button">Carregar</button>
       </div>
 
-      <div id="topsState" class="state">Clique em "Carregar" para ver as variações.</div>
+      <div id="topsState" class="state">Clique em "Carregar" para ver o Top 3.</div>
 
       <div id="topsBox" class="tops hidden">
         <div class="tops-grid">
@@ -86,7 +86,7 @@
         </div>
 
         <div class="mini-note">
-          Obs: Modo demonstração com tickers gratuitos (PETR4, VALE3, ITUB4, MGLU3).
+          Top 3 calculado a partir de uma lista de ativos líquidos.
         </div>
       </div>
     </section>

@@ -62,7 +62,6 @@ function setChangeClass(el, pct) {
 function normalizeTicker(input) {
   const t = (input || "").trim().toUpperCase();
   if (!t) return "";
-  // Remove .SA suffix if present
   return t.replace(".SA", "").replace(/[^A-Z0-9]/g, "");
 }
 
@@ -116,11 +115,9 @@ function renderQuote(q) {
   els.qLow.textContent = fmtBRL(q.regularMarketDayLow);
   els.qVol.textContent = fmtNum(q.regularMarketVolume);
 
-  // Show timestamp
   const timeStr = q.marketTime ? formatDateTime(q.marketTime) : "—";
   els.qTime.textContent = `Atualizado: ${timeStr}`;
 
-  // Show market status badge
   showMarketStatus(els.qMarketStatus, q.isMarketClosed);
 }
 
@@ -153,7 +150,7 @@ async function doSearch(refreshOnly = false) {
   if (!symbol) {
     els.quoteBox.classList.add("hidden");
     els.quoteState.classList.remove("hidden");
-    setState(els.quoteState, "Digite um ticker válido (ex: PETR4, VALE3).");
+    setState(els.quoteState, "Digite um ticker válido (ex: PETR4, HGLG11).");
     return;
   }
 
@@ -169,21 +166,11 @@ async function doSearch(refreshOnly = false) {
     if (!resp?.ok) throw new Error(resp?.error || "Falha ao obter cotação.");
     renderQuote(resp.data);
 
-    // persist last ticker
     chrome.storage.local.set({ lastTicker: symbol }).catch(() => {});
   } catch (e) {
     els.quoteBox.classList.add("hidden");
     els.quoteState.classList.remove("hidden");
-    
-    // Translate common error messages
-    let errorMsg = e.message || String(e);
-    if (errorMsg.includes("requires API key")) {
-      errorMsg = `O ticker "${symbol}" requer chave de API. Tickers gratuitos: PETR4, VALE3, ITUB4, MGLU3`;
-    } else if (errorMsg.includes("Ticker not found")) {
-      errorMsg = "Ticker não encontrado.";
-    }
-    
-    setState(els.quoteState, `Erro: ${errorMsg}`);
+    setState(els.quoteState, `Erro: ${e.message || e}`);
   } finally {
     els.btnSearch.disabled = false;
     els.btnRefresh.disabled = false;
@@ -194,13 +181,13 @@ async function loadTops() {
   els.btnLoadTops.disabled = true;
   els.topsBox.classList.add("hidden");
   els.topsState.classList.remove("hidden");
-  setState(els.topsState, "Carregando variações...");
+  setState(els.topsState, "Carregando Top 3...");
 
   try {
     const resp = await sendMessage({ type: "GET_TOPS" });
     if (!resp?.ok) throw new Error(resp?.error || "Falha ao carregar dados.");
 
-    const { stocks, fiis, updatedAt, isMarketClosed, isDemoMode } = resp.data;
+    const { stocks, fiis, updatedAt, isMarketClosed } = resp.data;
 
     renderList(els.stocksGainers, stocks.gainers);
     renderList(els.stocksLosers, stocks.losers);
@@ -210,18 +197,12 @@ async function loadTops() {
     els.topsState.classList.add("hidden");
     els.topsBox.classList.remove("hidden");
 
-    // Show market status
     showMarketStatus(els.topsMarketStatus, isMarketClosed);
 
-    // Update note with timestamp
     const note = document.querySelector(".mini-note");
     if (note && updatedAt) {
       const dateStr = new Date(updatedAt).toLocaleString("pt-BR");
-      if (isDemoMode) {
-        note.textContent = `Obs: Modo demonstração com tickers gratuitos. Atualizado: ${dateStr}`;
-      } else {
-        note.textContent = `Obs: Calculado a partir de ativos líquidos. Atualizado: ${dateStr}`;
-      }
+      note.textContent = `Top 3 calculado a partir de ativos líquidos. Atualizado: ${dateStr}`;
     }
   } catch (e) {
     els.topsBox.classList.add("hidden");

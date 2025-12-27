@@ -40,7 +40,7 @@ Perfect for investors who want to track the Brazilian market efficiently, direct
 | 🔍 **Ticker Search** | Enter the stock or REIT code (e.g., PETR4, HGLG11) and get the quote instantly |
 | 💰 **Real-Time Price** | View current price, percentage change, and change in BRL |
 | 📊 **Daily Data** | Opening price, day high, day low, and trading volume |
-| 📈 **Top 3 Gainers** | See the top 3 biggest gainers of the day for stocks and REITs |
+| 📈 **Top 3 Gainers** | See the top 3 biggest gainers of the day for stocks and REITs (40+ stocks, 30+ FIIs monitored) |
 | 📉 **Top 3 Losers** | See the top 3 biggest losers of the day for stocks and REITs |
 | 🔄 **Auto Refresh** | Quotes automatically update every 15 seconds |
 | 💾 **Last Ticker Memory** | The extension remembers the last asset you searched |
@@ -48,15 +48,15 @@ Perfect for investors who want to track the Brazilian market efficiently, direct
 
 ---
 
-## 📊 Available Tickers
+## 📊 Supported Assets
 
-### Free Tier (No API Key Required)
-The following tickers are available for free without any registration:
+The extension supports all B3 listed assets including:
 
-**PETR4** (Petrobras) • **VALE3** (Vale) • **ITUB4** (Itaú) • **MGLU3** (Magazine Luiza)
+- **Stocks** - PETR4, VALE3, ITUB4, BBDC4, WEGE3, and 4,000+ more
+- **REITs (FIIs)** - HGLG11, MXRF11, XPML11, KNRI11, and many more
+- **ETFs, BDRs** - Full support for all B3 tickers
 
-### Full Access
-For access to all 4,000+ tickers (stocks, REITs, ETFs, BDRs), get a free API key at [brapi.dev](https://brapi.dev/dashboard).
+Data provided by [brapi.dev](https://brapi.dev) with 15-minute delay.
 
 ---
 
